@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Temperature Converter</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <div class="theme-toggle">
+        <button id="theme-toggle-btn">
+          <i class="fas fa-moon"></i>
+          <span>Dark Mode</span>
+        </button>
+      </div>
+
+      <div class="converter-card">
+        <h1>Temperature Converter</h1>
+
+        <div class="converter-form">
+          <div class="input-group">
+            <label for="temperature">Temperature</label>
+            <input
+              type="number"
+              id="temperature"
+              placeholder="Enter temperature"
+              step="any"
+            />
+          </div>
+
+          <div class="units-container">
+            <div class="unit-group">
+              <label for="from-unit">From</label>
+              <div class="select-wrapper">
+                <select
+                  id="from-unit"
+                  data-tooltip="Select the source temperature unit"
+                >
+                  <option
+                    value="celsius"
+                    data-description="The Celsius scale is based on water's freezing (0°C) and boiling points (100°C) at standard atmospheric pressure."
+                  >
+                    Celsius (°C)
+                  </option>
+                  <option
+                    value="fahrenheit"
+                    data-description="The Fahrenheit scale sets water's freezing point at 32°F and boiling point at 212°F at standard atmospheric pressure."
+                  >
+                    Fahrenheit (°F)
+                  </option>
+                  <option
+                    value="kelvin"
+                    data-description="The Kelvin scale is an absolute temperature scale where 0K is absolute zero, the theoretical absence of all thermal energy."
+                  >
+                    Kelvin (K)
+                  </option>
+                </select>
+                <div class="tooltip"></div>
+              </div>
+            </div>
+
+            <button id="swap-btn" class="swap-btn" aria-label="Swap units">
+              <i class="fas fa-exchange-alt"></i>
+            </button>
+
+            <div class="unit-group">
+              <label for="to-unit">To</label>
+              <div class="select-wrapper">
+                <select
+                  id="to-unit"
+                  data-tooltip="Select the target temperature unit"
+                >
+                  <option
+                    value="fahrenheit"
+                    data-description="The Fahrenheit scale sets water's freezing point at 32°F and boiling point at 212°F at standard atmospheric pressure."
+                  >
+                    Fahrenheit (°F)
+                  </option>
+                  <option
+                    value="celsius"
+                    data-description="The Celsius scale is based on water's freezing (0°C) and boiling points (100°C) at standard atmospheric pressure."
+                  >
+                    Celsius (°C)
+                  </option>
+                  <option
+                    value="kelvin"
+                    data-description="The Kelvin scale is an absolute temperature scale where 0K is absolute zero, the theoretical absence of all thermal energy."
+                  >
+                    Kelvin (K)
+                  </option>
+                </select>
+                <div class="tooltip"></div>
+              </div>
+            </div>
+          </div>
+
+          <button id="convert-btn" class="convert-btn">Convert</button>
+        </div>
+
+        <div class="result-container">
+          <div class="result-box">
+            <div id="result">Result will appear here</div>
+            <button id="copy-btn" class="copy-btn" aria-label="Copy result">
+              <i class="fas fa-copy"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="history-card">
+        <h2>Conversion History</h2>
+        <div id="history-list" class="history-list">
+          <p class="empty-history">No conversion history yet</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="copy-notification" class="copy-notification">
+      Copied to clipboard!
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
