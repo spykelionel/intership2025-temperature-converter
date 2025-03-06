@@ -2,250 +2,331 @@
 const temperatureInput = document.getElementById("temperature");
 const fromUnitSelect = document.getElementById("from-unit");
 const toUnitSelect = document.getElementById("to-unit");
-const convertBtn = document.getElementById("convert-btn");
-const swapBtn = document.getElementById("swap-btn");
+const swapButton = document.getElementById("swap-btn");
 const resultElement = document.getElementById("result");
+const copyButton = document.getElementById("copy-btn");
 const historyList = document.getElementById("history-list");
-const copyBtn = document.getElementById("copy-btn");
+const noHistoryMessage = document.getElementById("no-history");
+const themeToggle = document.getElementById("theme-toggle");
 const copyNotification = document.getElementById("copy-notification");
-const themeToggleBtn = document.getElementById("theme-toggle-btn");
-const themeIcon = themeToggleBtn.querySelector("i");
-const themeText = themeToggleBtn.querySelector("span");
+const fromTooltip = document.getElementById("from-tooltip");
+const toTooltip = document.getElementById("to-tooltip");
 
-// Tooltips
-const fromUnitTooltip = fromUnitSelect.parentElement.querySelector(".tooltip");
-const toUnitTooltip = toUnitSelect.parentElement.querySelector(".tooltip");
-
-// Conversion history array
-const conversionHistory = [];
+// Constants
 const MAX_HISTORY_ITEMS = 5;
+
+// Initialize application
+document.addEventListener("DOMContentLoaded", () => {
+  // Load theme preference from localStorage
+  if (localStorage.getItem("theme") === "dark") {
+    document.body.classList.remove("light-mode");
+    document.body.classList.add("dark-mode");
+    themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+  }
+
+  // Load history from localStorage
+  loadHistory();
+
+  // Set initial form state
+  setInitialState();
+
+  // Perform initial conversion (if input has a value)
+  convertTemperature();
+});
+
+// Event listeners
+temperatureInput.addEventListener("input", convertTemperature);
+fromUnitSelect.addEventListener("change", convertTemperature);
+toUnitSelect.addEventListener("change", convertTemperature);
+swapButton.addEventListener("click", swapUnits);
+copyButton.addEventListener("click", copyResult);
+themeToggle.addEventListener("click", toggleTheme);
+
+// Setup tooltip functionality
+setupTooltips();
+
+// Set initial state
+function setInitialState() {
+  // Set focus to the temperature input
+  temperatureInput.focus();
+
+  // Set default values for dropdowns (if not already set)
+  if (!fromUnitSelect.value) fromUnitSelect.value = "celsius";
+  if (!toUnitSelect.value) toUnitSelect.value = "fahrenheit";
+}
 
 // Temperature conversion formulas
 const conversionFormulas = {
-  // Celsius to other units
-  celsius: {
-    fahrenheit: (temp) => (temp * 9) / 5 + 32,
-    kelvin: (temp) => temp + 273.15,
-    celsius: (temp) => temp,
-  },
-  // Fahrenheit to other units
-  fahrenheit: {
-    celsius: (temp) => ((temp - 32) * 5) / 9,
-    kelvin: (temp) => ((temp - 32) * 5) / 9 + 273.15,
-    fahrenheit: (temp) => temp,
-  },
-  // Kelvin to other units
-  kelvin: {
-    celsius: (temp) => temp - 273.15,
-    fahrenheit: (temp) => ((temp - 273.15) * 9) / 5 + 32,
-    kelvin: (temp) => temp,
-  },
+  celsiusToFahrenheit: (celsius) => (celsius * 9) / 5 + 32,
+  celsiusToKelvin: (celsius) => celsius + 273.15,
+  fahrenheitToCelsius: (fahrenheit) => ((fahrenheit - 32) * 5) / 9,
+  fahrenheitToKelvin: (fahrenheit) => ((fahrenheit - 32) * 5) / 9 + 273.15,
+  kelvinToCelsius: (kelvin) => kelvin - 273.15,
+  kelvinToFahrenheit: (kelvin) => ((kelvin - 273.15) * 9) / 5 + 32,
 };
+
+// Main conversion function
+function convertTemperature() {
+  // Get input value and units
+  const value = temperatureInput.value;
+  const fromUnit = fromUnitSelect.value;
+  const toUnit = toUnitSelect.value;
+
+  // Validate input - show placeholder if empty
+  if (value === "") {
+    resultElement.textContent = "--";
+    return;
+  }
+
+  // Parse input as a number
+  const numValue = parseFloat(value);
+
+  // Perform conversion
+  let result;
+
+  if (fromUnit === toUnit) {
+    // Same unit, no conversion needed
+    result = numValue;
+  } else {
+    // Determine which conversion to use
+    const conversionKey = `${fromUnit}To${capitalizeFirstLetter(toUnit)}`;
+    if (conversionFormulas[conversionKey]) {
+      result = conversionFormulas[conversionKey](numValue);
+    } else {
+      resultElement.textContent = "Conversion not supported";
+      return;
+    }
+  }
+
+  // Format the result
+  const formattedResult = formatResult(result, toUnit);
+
+  // Show result with fade-in animation
+  resultElement.style.opacity = "0";
+  setTimeout(() => {
+    resultElement.textContent = formattedResult;
+    resultElement.style.opacity = "1";
+  }, 100);
+
+  // Save to history
+  saveToHistory(numValue, fromUnit, result, toUnit);
+}
 
 // Format the result with appropriate unit symbol
 function formatResult(value, unit) {
-  const symbols = {
+  // Round to 2 decimal places
+  const roundedValue = Math.round(value * 100) / 100;
+
+  // Add unit symbol
+  const unitSymbols = {
     celsius: "°C",
     fahrenheit: "°F",
     kelvin: "K",
   };
 
-  // Round to 2 decimal places
-  const roundedValue = Math.round(value * 100) / 100;
-  return `${roundedValue}${symbols[unit]}`;
+  return `${roundedValue} ${unitSymbols[unit]}`;
 }
 
-// Convert temperature
-function convertTemperature() {
-  // Get input values
-  const temperature = Number.parseFloat(temperatureInput.value);
-  const fromUnit = fromUnitSelect.value;
-  const toUnit = toUnitSelect.value;
+// History management
+function saveToHistory(fromValue, fromUnit, toValue, toUnit) {
+  // Only save if we have a valid input
+  if (isNaN(fromValue) || isNaN(toValue)) return;
 
-  // Validate input
-  if (isNaN(temperature)) {
-    resultElement.textContent = "Please enter a valid number";
-    return;
-  }
+  // Get existing history or initialize new array
+  let history = JSON.parse(localStorage.getItem("conversionHistory")) || [];
 
-  // Perform conversion
-  const result = conversionFormulas[fromUnit][toUnit](temperature);
-
-  // Format and display result
-  const formattedResult = formatResult(result, toUnit);
-  resultElement.textContent = formattedResult;
-  resultElement.classList.add("fade-in");
-
-  // Add to history
-  addToHistory(temperature, fromUnit, toUnit, result);
-
-  // Remove animation class after animation completes
-  setTimeout(() => {
-    resultElement.classList.remove("fade-in");
-  }, 300);
-}
-
-// Add conversion to history
-function addToHistory(inputTemp, fromUnit, toUnit, result) {
-  // Create history item object
-  const historyItem = {
-    inputTemp,
-    fromUnit,
-    toUnit,
-    result,
+  // Create new history item
+  const newItem = {
+    fromValue: fromValue,
+    fromUnit: fromUnit,
+    toValue: toValue,
+    toUnit: toUnit,
     timestamp: new Date().toISOString(),
   };
 
-  // Add to beginning of array
-  conversionHistory.unshift(historyItem);
+  // Check if this exact conversion is already in history
+  const isDuplicate = history.some(
+    (item) =>
+      item.fromValue === newItem.fromValue &&
+      item.fromUnit === newItem.fromUnit &&
+      item.toUnit === newItem.toUnit
+  );
 
-  // Limit history to MAX_HISTORY_ITEMS
-  if (conversionHistory.length > MAX_HISTORY_ITEMS) {
-    conversionHistory.pop();
+  if (!isDuplicate) {
+    // Add to beginning of array
+    history.unshift(newItem);
+
+    // Limit to max items
+    if (history.length > MAX_HISTORY_ITEMS) {
+      history = history.slice(0, MAX_HISTORY_ITEMS);
+    }
+
+    // Save back to localStorage
+    localStorage.setItem("conversionHistory", JSON.stringify(history));
+
+    // Update history display
+    displayHistory();
   }
-
-  // Update history display
-  updateHistoryDisplay();
 }
 
-// Update history display
-function updateHistoryDisplay() {
-  // Clear current history
+function loadHistory() {
+  const history = JSON.parse(localStorage.getItem("conversionHistory")) || [];
+  if (history.length > 0) {
+    displayHistory();
+  }
+}
+
+function displayHistory() {
+  const history = JSON.parse(localStorage.getItem("conversionHistory")) || [];
+
+  // Clear current list
   historyList.innerHTML = "";
 
-  // If no history, show empty message
-  if (conversionHistory.length === 0) {
-    const emptyMessage = document.createElement("p");
-    emptyMessage.textContent = "No conversion history yet";
-    emptyMessage.className = "empty-history";
-    historyList.appendChild(emptyMessage);
+  if (history.length === 0) {
+    noHistoryMessage.style.display = "block";
     return;
   }
 
-  // Add each history item
-  conversionHistory.forEach((item, index) => {
-    const historyElement = document.createElement("div");
-    historyElement.className = "history-item";
+  // Hide "no history" message
+  noHistoryMessage.style.display = "none";
 
-    const fromFormatted = formatResult(item.inputTemp, item.fromUnit);
-    const toFormatted = formatResult(item.result, item.toUnit);
+  // Create list items for each history entry
+  history.forEach((item, index) => {
+    const listItem = document.createElement("li");
+    listItem.className = "history-item";
 
-    historyElement.textContent = `${fromFormatted} → ${toFormatted}`;
+    // Format date for display
+    const date = new Date(item.timestamp);
+    const timeString = date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    // Create content elements
+    const itemText = document.createElement("span");
+    itemText.className = "history-item-text";
+    itemText.textContent = `${item.fromValue} ${getUnitSymbol(
+      item.fromUnit
+    )} = ${Math.round(item.toValue * 100) / 100} ${getUnitSymbol(item.toUnit)}`;
+
+    const timestamp = document.createElement("span");
+    timestamp.className = "history-timestamp";
+    timestamp.textContent = timeString;
+
+    // Add elements to list item
+    listItem.appendChild(itemText);
+    listItem.appendChild(timestamp);
 
     // Add click event to reuse this conversion
-    historyElement.addEventListener("click", () => {
-      temperatureInput.value = item.inputTemp;
+    listItem.addEventListener("click", () => {
+      temperatureInput.value = item.fromValue;
       fromUnitSelect.value = item.fromUnit;
       toUnitSelect.value = item.toUnit;
       convertTemperature();
     });
 
-    historyList.appendChild(historyElement);
+    historyList.appendChild(listItem);
   });
 }
 
-// Swap units
+// Swap the "from" and "to" units
 function swapUnits() {
-  const tempFromUnit = fromUnitSelect.value;
+  const tempUnit = fromUnitSelect.value;
   fromUnitSelect.value = toUnitSelect.value;
-  toUnitSelect.value = tempFromUnit;
+  toUnitSelect.value = tempUnit;
 
-  // If there's a value, convert immediately
-  if (temperatureInput.value) {
-    convertTemperature();
-  }
+  // Animate button
+  swapButton.style.transform = "rotate(180deg)";
+  setTimeout(() => {
+    swapButton.style.transform = "rotate(0deg)";
+  }, 300);
+
+  // Perform conversion with new units
+  convertTemperature();
 }
 
 // Copy result to clipboard
-function copyResultToClipboard() {
-  const textToCopy = resultElement.textContent;
+function copyResult() {
+  const result = resultElement.textContent;
 
-  // Check if there's a valid result
-  if (
-    textToCopy === "Result will appear here" ||
-    textToCopy === "Please enter a valid number"
-  ) {
-    return;
-  }
+  // Don't copy placeholder
+  if (result === "--") return;
 
   // Use the Clipboard API
   navigator.clipboard
-    .writeText(textToCopy)
+    .writeText(result)
     .then(() => {
       // Show notification
       copyNotification.classList.add("show");
-
-      // Hide notification after 2 seconds
       setTimeout(() => {
         copyNotification.classList.remove("show");
       }, 2000);
     })
     .catch((err) => {
-      console.error("Failed to copy text: ", err);
+      console.error("Error copying text: ", err);
     });
 }
 
-// Toggle dark/light theme
+// Toggle between light and dark themes
 function toggleTheme() {
-  document.body.classList.toggle("dark-mode");
+  const isDarkMode = document.body.classList.contains("dark-mode");
 
-  // Update button icon and text
-  if (document.body.classList.contains("dark-mode")) {
-    themeIcon.className = "fas fa-sun";
-    themeText.textContent = "Light Mode";
+  if (isDarkMode) {
+    document.body.classList.remove("dark-mode");
+    document.body.classList.add("light-mode");
+    themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+    localStorage.setItem("theme", "light");
   } else {
-    themeIcon.className = "fas fa-moon";
-    themeText.textContent = "Dark Mode";
+    document.body.classList.remove("light-mode");
+    document.body.classList.add("dark-mode");
+    themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+    localStorage.setItem("theme", "dark");
   }
 }
-
-// Update tooltip content based on selected option
-function updateTooltip(select, tooltip) {
-  const selectedOption = select.options[select.selectedIndex];
-  const description = selectedOption.getAttribute("data-description");
-  tooltip.textContent = description;
-}
-
-// Event Listeners
-// Convert on button click
-convertBtn.addEventListener("click", convertTemperature);
-
-// Live conversion as user types
-temperatureInput.addEventListener("input", convertTemperature);
-
-// Live conversion when units change
-fromUnitSelect.addEventListener("change", convertTemperature);
-toUnitSelect.addEventListener("change", convertTemperature);
-
-// Swap units button
-swapBtn.addEventListener("click", swapUnits);
-
-// Copy result button
-copyBtn.addEventListener("click", copyResultToClipboard);
-
-// Theme toggle
-themeToggleBtn.addEventListener("click", toggleTheme);
 
 // Tooltip functionality
-fromUnitSelect.addEventListener("mouseover", () => {
-  updateTooltip(fromUnitSelect, fromUnitTooltip);
-});
+function setupTooltips() {
+  // From unit tooltip
+  fromUnitSelect.addEventListener("mouseover", () => {
+    const selectedOption = fromUnitSelect.options[fromUnitSelect.selectedIndex];
+    const tooltipText = selectedOption.getAttribute("data-tooltip");
 
-toUnitSelect.addEventListener("mouseover", () => {
-  updateTooltip(toUnitSelect, toUnitTooltip);
-});
+    if (tooltipText) {
+      fromTooltip.textContent = tooltipText;
+      fromTooltip.style.opacity = "1";
+    }
+  });
 
-// Form validation - prevent form submission on Enter key
-document.querySelector(".converter-form").addEventListener("keypress", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    convertTemperature();
-  }
-});
+  fromUnitSelect.addEventListener("mouseout", () => {
+    fromTooltip.style.opacity = "0";
+  });
 
-// Initialize tooltips
-updateTooltip(fromUnitSelect, fromUnitTooltip);
-updateTooltip(toUnitSelect, toUnitTooltip);
+  // To unit tooltip
+  toUnitSelect.addEventListener("mouseover", () => {
+    const selectedOption = toUnitSelect.options[toUnitSelect.selectedIndex];
+    const tooltipText = selectedOption.getAttribute("data-tooltip");
 
-// Initialize history display
-updateHistoryDisplay();
+    if (tooltipText) {
+      toTooltip.textContent = tooltipText;
+      toTooltip.style.opacity = "1";
+    }
+  });
+
+  toUnitSelect.addEventListener("mouseout", () => {
+    toTooltip.style.opacity = "0";
+  });
+}
+
+// Helper functions
+function capitalizeFirstLetter(string) {
+  return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+function getUnitSymbol(unit) {
+  const symbols = {
+    celsius: "°C",
+    fahrenheit: "°F",
+    kelvin: "K",
+  };
+  return symbols[unit] || "";
+}
